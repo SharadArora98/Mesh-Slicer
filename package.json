@@ -3,7 +3,7 @@
     "start": "vite"
   },
   "dependencies": {
-    "three.js": "^0.77.1"
+    "three": "^0.183.2"
   },
   "devDependencies": {
     "vite": "^8.0.8"
