@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import CutManager from './cutManager';
+import SelectionManager from './selectionControls';
 
 const canvas = document.getElementById('designCanvas');
 const scene = new THREE.Scene();
@@ -13,13 +14,16 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 
+const selectionControl = new SelectionManager(scene,camera, renderer, controls);
+selectionControl.init();
+
 const geometry = new THREE.BoxGeometry(1,1,1);
 const material = new THREE.MeshBasicMaterial({color:0xff0000});
 
 const mesh = new THREE.Mesh(geometry, material);
 scene.add(mesh);
 
-const cutManager = new CutManager(mesh, camera, renderer, controls, scene);
+const cutManager = new CutManager(mesh, camera, renderer, controls, selectionControl, scene);
 
 const cutBtn = document.getElementById('cutBtn');
 

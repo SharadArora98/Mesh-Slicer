@@ -2,11 +2,12 @@ import * as THREE from 'three';
 import MeshCutter from './meshCutter';
 
 export default class CutManager {
-    constructor(mesh, camera, renderer, controls, scene) {
+    constructor(mesh, camera, renderer, controls, selectionControl, scene) {
         this.model = mesh;
         this.camera = camera;
         this.renderer = renderer;
         this.controls = controls;
+        this.selectionControl = selectionControl;
         this.scene = scene;
 
         this.raycaster = new THREE.Raycaster();
@@ -96,6 +97,7 @@ export default class CutManager {
         this.startScreen = this.mouse.clone();
 
         if (this.controls) this.controls.enabled = false;
+        if (this.selectionControl) this.selectionControl.dispose();
     }
 
     onMouseMove(event) {
@@ -124,6 +126,7 @@ export default class CutManager {
         this.isDrawing = false;
 
         if (this.controls) this.controls.enabled = true;
+        if (this.selectionControl) this.selectionControl.init();
 
         this.startPoint = this.raycastFromScreen(this.startScreen);
         this.endPoint = this.raycastFromScreen(this.endScreen);
