@@ -20,7 +20,25 @@ const mesh = new THREE.Mesh(geometry, material);
 scene.add(mesh);
 
 const cutManager = new CutManager(mesh, camera, renderer, controls, scene);
-cutManager.init();
+
+const cutBtn = document.getElementById('cutBtn');
+
+let cutEnabled = false;
+
+cutBtn.addEventListener('click', () => {
+  cutEnabled = !cutEnabled;
+
+  if (cutEnabled) {
+    cutManager.init();
+    cutBtn.innerText = "Cut Mode ON";
+    cutBtn.style.background = "#e74c3c";
+  } else {
+    cutManager.dispose();
+    cutBtn.innerText = "Enable Cut Mode";
+    cutBtn.style.background = "#222";
+  }
+});
+
 function animate() {
 	requestAnimationFrame( animate );
 	renderer.render( scene, camera );

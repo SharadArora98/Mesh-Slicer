@@ -6,10 +6,23 @@
     	<style>
 			body { margin: 0; overflow: hidden; }
 			canvas { display: block; }
+			#cutBtn {
+				position: absolute;
+				top: 20px;
+				left: 20px;
+				z-index: 10;
+				padding: 10px 16px;
+				background: #222;
+				color: white;
+				border: none;
+				cursor: pointer;
+				border-radius: 6px;
+			}
 		</style>
   	</head>
 	<body>
 		<canvas id="designCanvas"></canvas>
+		<button id="cutBtn">Enable Cut Mode</button>
         <script src="app.js" type="module"></script>
 	</body>
 </html>

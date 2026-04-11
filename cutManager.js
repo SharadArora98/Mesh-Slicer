@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import MeshCutter from './meshCutter';
 
 export default class CutManager {
     constructor(mesh, camera, renderer, controls, scene) {
@@ -126,7 +127,6 @@ export default class CutManager {
 
         this.startPoint = this.raycastFromScreen(this.startScreen);
         this.endPoint = this.raycastFromScreen(this.endScreen);
-
         if (this.startPoint && this.endPoint) {
         this.onCutComplete(this.startPoint, this.endPoint);
         }
@@ -149,8 +149,17 @@ export default class CutManager {
 
     raycastFromScreen(lineCoord) {
         this.raycaster.setFromCamera(lineCoord, this.camera);
-        const hits = this.raycaster.intersectObject(this.model, true);
-        return hits.length ? hits[0].point.clone() : null;
+        // const hits = this.raycaster.intersectObject(this.model, true);
+        // console.log(hits, lineCoord);
+        // if (hits.length) {
+        //     return hits[0].point.clone();
+        // }
+        const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+        const point = new THREE.Vector3();
+        this.raycaster.ray.intersectPlane(plane, point);
+
+        return point;
+        // return hits.length ? hits[0].point.clone() : null;
     }
 
     onCutComplete(start, end) {
@@ -162,5 +171,21 @@ export default class CutManager {
         const normal = new THREE.Vector3().crossVectors(direction, camDir).normalize();
 
         const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, start);
+        const [meshA, meshB] = MeshCutter.cut(this.model, plane);
+        if (meshA && meshB) {
+            this.scene.remove(this.model);
+            this.scene.add(meshA);
+            this.scene.add(meshB);
+        }
+    }
+
+    dispose() {
+        const canvas = this.renderer.domElement;
+
+        canvas.removeEventListener('mousedown', this._onMouseDown);
+        canvas.removeEventListener('mousemove', this._onMouseMove);
+        canvas.removeEventListener('mouseup', this._onMouseUp);
+
+        this.isActive = false;
     }
 }
