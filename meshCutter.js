@@ -3,7 +3,7 @@ import * as THREE from 'three';
 export default class MeshCutter {
 
     static cut(mesh, plane) {
-
+        const cutEdges = [];
         mesh.updateMatrixWorld(true);
 
         let geometry = mesh.geometry.clone();
@@ -57,11 +57,22 @@ export default class MeshCutter {
                 continue;
             }
 
-            this.splitTriangle(va, vb, vc, d1, d2, d3, plane, front, back);
+            this.splitTriangle(va, vb, vc, d1, d2, d3, plane, front, back, cutEdges);
         }
 
-        const meshA = this.buildMesh(front, mesh.material.clone());
-        const meshB = this.buildMesh(back, mesh.material.clone());
+        let meshA = this.buildMesh(front, mesh.material.clone());
+        let meshB = this.buildMesh(back, mesh.material.clone());
+        if (cutEdges.length > 0) {
+
+            const loop = this.buildLoop([...cutEdges]);
+
+            const cap = this.buildCap(loop, plane);
+
+            if (cap) {
+                meshA.add(cap);
+                meshB.add(cap.clone());
+            }
+        }
 
         return [meshA, meshB];
 
@@ -81,17 +92,16 @@ export default class MeshCutter {
         };
     }
 
-    static splitTriangle(a, b, c, d1, d2, d3, plane, front, back) {
+    static splitTriangle(a, b, c, d1, d2, d3, plane, front, back, cutEdges) {
 
         const pts = [a, b, c];
         const dists = [d1, d2, d3];
-        const sides = dists.map(d => d >= 0);
 
         const frontPts = [];
         const backPts = [];
 
         for (let i = 0; i < 3; i++) {
-            if (sides[i]) frontPts.push(pts[i]);
+            if (dists[i]>=0) frontPts.push(pts[i]);
             else backPts.push(pts[i]);
         }
 
@@ -104,7 +114,7 @@ export default class MeshCutter {
 
             const i1 = this.intersect(f, b1, plane.distanceToPoint(f.pos), plane.distanceToPoint(b1.pos));
             const i2 = this.intersect(f, b2, plane.distanceToPoint(f.pos), plane.distanceToPoint(b2.pos));
-
+            cutEdges.push([i1.pos.clone(), i2.pos.clone()]);
             this.pushTri(front, f, i1, i2);
 
             this.pushTri(back, b1, b2, i1);
@@ -119,7 +129,7 @@ export default class MeshCutter {
 
             const i1 = this.intersect(f1, b, plane.distanceToPoint(f1.pos), plane.distanceToPoint(b.pos));
             const i2 = this.intersect(f2, b, plane.distanceToPoint(f2.pos), plane.distanceToPoint(b.pos));
-
+            cutEdges.push([i1.pos.clone(), i2.pos.clone()]);
             this.pushTri(back, b, i1, i2);
 
             this.pushTri(front, f1, f2, i1);
@@ -156,5 +166,95 @@ export default class MeshCutter {
 
         return new THREE.Mesh(geometry, material);
 
+    }
+
+    static buildLoop(edges) {
+        const loop = [edges[0][0].clone(), edges[0][1].clone()];
+        edges.splice(0, 1);
+        let guard = 0;
+
+        while (edges.length && guard < 10000) {
+            guard++;
+            const last = loop[loop.length - 1];
+
+            for (let i = 0; i < edges.length; i++) {
+                const [a, b] = edges[i];
+
+                if (a.distanceTo(last) < 1e-5) {
+                    loop.push(b);
+                    edges.splice(i, 1);
+                    break;
+                }
+
+                if (b.distanceTo(last) < 1e-5) {
+                    loop.push(a);
+                    edges.splice(i, 1);
+                    break;
+                }
+            }
+        }
+
+        return loop;
+    }
+
+    static buildCap(loop, plane) {
+
+        if (loop.length < 3) return null;
+
+        const normal = plane.normal;
+
+        // build local basis
+        const tangent = new THREE.Vector3(1, 0, 0);
+        if (Math.abs(normal.dot(tangent)) > 0.9) {
+            tangent.set(0, 1, 0);
+        }
+
+        tangent.cross(normal).normalize();
+        const bitangent = new THREE.Vector3().crossVectors(normal, tangent);
+
+        // project to 2D
+        const pts2D = loop.map(p => new THREE.Vector2(
+            p.dot(tangent),
+            p.dot(bitangent)
+        ));
+
+        // triangulate
+        const indices = THREE.ShapeUtils.triangulateShape(pts2D, []);
+
+        const vertices = [];
+        const uvs = [];
+
+        indices.forEach(tri => {
+            tri.forEach(i => {
+                const p = loop[i];
+
+                vertices.push(p.x, p.y, p.z);
+
+                // simple planar UV
+                uvs.push(pts2D[i].x, pts2D[i].y);
+            });
+        });
+
+        const geo = new THREE.BufferGeometry();
+
+        geo.setAttribute(
+            'position',
+            new THREE.Float32BufferAttribute(vertices, 3)
+        );
+
+        geo.setAttribute(
+            'uv',
+            new THREE.Float32BufferAttribute(uvs, 2)
+        );
+
+        geo.computeVertexNormals();
+
+        return new THREE.Mesh(
+            geo,
+            new THREE.MeshStandardMaterial({
+                color: 0xffcc88,
+                side: THREE.DoubleSide
+            })
+        );
     }
 }
