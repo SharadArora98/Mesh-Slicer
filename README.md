@@ -11,7 +11,7 @@ Third Party Tools -
     three-mesh-bvh - To use bvh, to accelerate and optimize the triangle filtering while splitting
 
 Geometry Slicing Approach-
-    > Create a plane using the end points given by the user, normal to the camera direction.
+    > Create a plane using the end points given by the user, normal to the camera direction. \n
     > Sort triangles into 3 arrays, left of plane, right of plane and the triangles which are being intersected by plane. Sorting is done using distance from the plane +ve means to the right, -ve means to the left, intersecting triangles has mixed distance of each vertex.
     > Apply splitting logic on intersected triangles. Calculate the intersection points of the triangle edges by the   plane.
     > Create 3 new triangles, 2 will be either in front of plane, 1 in the back of plane , or vice-versa.
