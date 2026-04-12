@@ -3,21 +3,35 @@ import * as THREE from 'three';
 export default class MeshCutter {
 
     static cut(mesh, plane) {
-        const geometry = mesh.geometry.clone().toNonIndexed();
+
+        mesh.updateMatrixWorld(true);
+
+        let geometry = mesh.geometry.clone();
+        geometry.applyMatrix4(mesh.matrixWorld);
+
+        geometry.deleteAttribute('normal');
+        geometry = geometry.toNonIndexed();
+
         const pos = geometry.attributes.position.array;
+        const uvAttr = geometry.attributes.uv;
+        const uv = uvAttr ? uvAttr.array : null;
 
         const front = [];
         const back = [];
 
-        const a = new THREE.Vector3();
-        const b = new THREE.Vector3();
-        const c = new THREE.Vector3();
-
         for (let i = 0; i < pos.length; i += 9) {
 
-            a.set(pos[i], pos[i+1], pos[i+2]);
-            b.set(pos[i+3], pos[i+4], pos[i+5]);
-            c.set(pos[i+6], pos[i+7], pos[i+8]);
+            // positions
+            const a = new THREE.Vector3(pos[i], pos[i+1], pos[i+2]);
+            const b = new THREE.Vector3(pos[i+3], pos[i+4], pos[i+5]);
+            const c = new THREE.Vector3(pos[i+6], pos[i+7], pos[i+8]);
+
+            // UVs (correct indexing)
+            const uvIndex = (i / 3) * 2;
+
+            const aUV = uv ? new THREE.Vector2(uv[uvIndex], uv[uvIndex + 1]) : new THREE.Vector2();
+            const bUV = uv ? new THREE.Vector2(uv[uvIndex + 2], uv[uvIndex + 3]) : new THREE.Vector2();
+            const cUV = uv ? new THREE.Vector2(uv[uvIndex + 4], uv[uvIndex + 5]) : new THREE.Vector2();
 
             const d1 = plane.distanceToPoint(a);
             const d2 = plane.distanceToPoint(b);
@@ -29,40 +43,42 @@ export default class MeshCutter {
 
             const totalFront = sideA + sideB + sideC;
 
+            const va = { pos: a, uv: aUV };
+            const vb = { pos: b, uv: bUV };
+            const vc = { pos: c, uv: cUV };
+
             if (totalFront === 3) {
-                this._pushTri(front, a, b, c);
+                this.pushTri(front, va, vb, vc);
                 continue;
             }
 
             if (totalFront === 0) {
-                this._pushTri(back, a, b, c);
+                this.pushTri(back, va, vb, vc);
                 continue;
             }
 
-            this.splitTriangle(a, b, c, d1, d2, d3, plane, front, back);
+            this.splitTriangle(va, vb, vc, d1, d2, d3, plane, front, back);
         }
 
-        const matA = new THREE.MeshBasicMaterial({ color: 0xff5555, side: THREE.DoubleSide });
-        const matB = new THREE.MeshBasicMaterial({ color: 0x5555ff, side: THREE.DoubleSide });
-
-        const meshA = this.buildMesh(front, matA);
-        const meshB = this.buildMesh(back, matB);
+        const meshA = this.buildMesh(front, mesh.material.clone());
+        const meshB = this.buildMesh(back, mesh.material.clone());
 
         return [meshA, meshB];
 
     }
 
-    static _pushTri(arr, a, b, c) {
-        arr.push(
-            a.x, a.y, a.z,
-            b.x, b.y, b.z,
-            c.x, c.y, c.z
-        );
+    static pushTri(arr, v1, v2, v3) {
+        arr.push(v1, v2, v3);
     }
 
-    static intersect(p1, p2, d1, d2) {
+    static intersect(v1, v2, d1, d2) {
+
         const t = d1 / (d1 - d2);
-        return new THREE.Vector3().lerpVectors(p1, p2, t);
+
+        return {
+            pos: new THREE.Vector3().lerpVectors(v1.pos, v2.pos, t),
+            uv: new THREE.Vector2().lerpVectors(v1.uv, v2.uv, t)
+        };
     }
 
     static splitTriangle(a, b, c, d1, d2, d3, plane, front, back) {
@@ -75,49 +91,65 @@ export default class MeshCutter {
         const backPts = [];
 
         for (let i = 0; i < 3; i++) {
-        if (sides[i]) frontPts.push(pts[i]);
-        else backPts.push(pts[i]);
+            if (sides[i]) frontPts.push(pts[i]);
+            else backPts.push(pts[i]);
         }
 
+        // 1 front, 2 back
         if (frontPts.length === 1) {
 
             const f = frontPts[0];
             const b1 = backPts[0];
             const b2 = backPts[1];
 
-            const i1 = this.intersect(f, b1, plane.distanceToPoint(f), plane.distanceToPoint(b1));
-            const i2 = this.intersect(f, b2, plane.distanceToPoint(f), plane.distanceToPoint(b2));
+            const i1 = this.intersect(f, b1, plane.distanceToPoint(f.pos), plane.distanceToPoint(b1.pos));
+            const i2 = this.intersect(f, b2, plane.distanceToPoint(f.pos), plane.distanceToPoint(b2.pos));
 
-            this._pushTri(front, f, i1, i2);
+            this.pushTri(front, f, i1, i2);
 
-            this._pushTri(back, b1, b2, i1);
-            this._pushTri(back, b2, i2, i1);
+            this.pushTri(back, b1, b2, i1);
+            this.pushTri(back, b2, i2, i1);
         }
 
+        // 2 front, 1 back
         else if (frontPts.length === 2) {
-
             const f1 = frontPts[0];
             const f2 = frontPts[1];
             const b = backPts[0];
 
-            const i1 = this.intersect(f1, b, plane.distanceToPoint(f1), plane.distanceToPoint(b));
-            const i2 = this.intersect(f2, b, plane.distanceToPoint(f2), plane.distanceToPoint(b));
+            const i1 = this.intersect(f1, b, plane.distanceToPoint(f1.pos), plane.distanceToPoint(b.pos));
+            const i2 = this.intersect(f2, b, plane.distanceToPoint(f2.pos), plane.distanceToPoint(b.pos));
 
-            this._pushTri(back, b, i1, i2);
+            this.pushTri(back, b, i1, i2);
 
-            this._pushTri(front, f1, f2, i1);
-            this._pushTri(front, f2, i2, i1);
+            this.pushTri(front, f1, f2, i1);
+            this.pushTri(front, f2, i2, i1);
         }
 
     }
 
     static buildMesh(vertices, material) {
+
         if (vertices.length === 0) return null;
 
+        const positions = [];
+        const uvs = [];
+
+        vertices.forEach(v => {
+            positions.push(v.pos.x, v.pos.y, v.pos.z);
+            uvs.push(v.uv.x, v.uv.y);
+        });
+
         const geometry = new THREE.BufferGeometry();
+
         geometry.setAttribute(
         'position',
-        new THREE.Float32BufferAttribute(vertices, 3)
+        new THREE.Float32BufferAttribute(positions, 3)
+        );
+
+        geometry.setAttribute(
+        'uv',
+        new THREE.Float32BufferAttribute(uvs, 2)
         );
 
         geometry.computeVertexNormals();
