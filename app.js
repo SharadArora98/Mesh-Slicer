@@ -31,11 +31,17 @@ controls.enableDamping = true;
 const ambient = new THREE.AmbientLight(0xffffff, 0.5);
 scene.add(ambient);
 
+const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+dirLight.position.set(5, 10, 5);
+dirLight.target.position.set(0, 0, 0);
+scene.add(dirLight);
+scene.add(dirLight.target);
+
 const selectionControl = new SelectionManager(scene,camera, renderer, controls);
 selectionControl.init();
 
 const geometry = new THREE.BoxGeometry(1,1,1);
-const material = new THREE.MeshStandardMaterial({color:0xff0000, side: THREE.DoubleSide});
+const material = new THREE.MeshStandardMaterial({color:0xff5000, side: THREE.DoubleSide});
 
 let model = new THREE.Mesh(geometry, material);
 scene.add(model);

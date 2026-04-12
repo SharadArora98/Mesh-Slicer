@@ -253,7 +253,9 @@ export default class MeshCutter {
             geo,
             new THREE.MeshStandardMaterial({
                 color: 0xffcc88,
-                side: THREE.DoubleSide
+                side: THREE.DoubleSide,
+                roughness: 0.2,
+                metalness: 1,
             })
         );
     }
