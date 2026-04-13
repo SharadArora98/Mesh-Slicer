@@ -1,0 +1,9 @@
+Design Notes
+
+System architecture - The main instance is app.js, which sets up the scene, camera, renderer and lights.
+    I've added the model loader code here. For UI interactions i've added them via event listeners on the buttons.
+
+Tradeoffs - I added stangard material to the new caps generated, i was not able to apply bfh to accelerate raycasting, because 
+    i was not able to figure out uv interpolation using that.
+
+Scaling - Currently this only considers one model one cut, i can scale this in future by maintaining a proper object group.
