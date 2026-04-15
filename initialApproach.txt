@@ -1,0 +1,9 @@
+Upon reading the assignment 1st idea was to recreate the "fruit ninja" game in which user can slice the fruits, which at least me realise that this problem was solvable.
+
+1st approach- take the model, align in desired rotation, then create multiple lines which would be the splitting planes. Along the splitting lines calculate the vertices of the model. Create multiple models equal to the number of cuts.
+The vertices on the split plane , lets call them boundary vertices. 
+Select the model and set the vertices after the boundary vertices as null or fragment as transparent.
+This approach would not be optimized as the geometry still would be there and still participate in collisions.
+
+2nd approach- the initial step would be same to calculate the boundary vertices at the split. In this create new geometry, which would consist of vertices which are only from start to boundary vertices and continue like that by creating further new geometries.
+in this initial problem that came to me was how would the textures be applied on the new geometries. So I need to figure out how to split the UVs
